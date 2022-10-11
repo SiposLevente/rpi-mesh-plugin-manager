@@ -1,0 +1,14 @@
+[dummy_plugin]
+enabled=true
+type=repo
+location=https://www.github.com/DummyPluginMaker/dummy_plugin
+
+[dummy_local]
+enabled=true
+type=local
+location=/home/dummy/projects/someplugin
+
+[dummy_repo]
+enabled=true
+type=collection
+location=https://raw.githubusercontent.com/DummyRepoMaker/DummyRepo/main/DummyRepo.repo
