@@ -1,12 +1,11 @@
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use crate::plugin::{Plugin, PluginType};
 
 pub struct PluginManager {
-    plugins: Vec<Plugin>,
+    plugins: HashMap<String, Plugin>,
     config_location: String,
     plugin_repo_location: String,
-    cache_location: String,
     installed_cache_location: String,
     plugin_folder_location: String,
 }
@@ -14,10 +13,9 @@ pub struct PluginManager {
 impl PluginManager {
     pub fn new() -> PluginManager {
         PluginManager {
-            plugins: vec![],
+            plugins: HashMap::new(),
             config_location: String::from("config.conf"),
-            cache_location: String::from(".cache"),
-            plugin_repo_location: String::from("plugins.repo"),
+            plugin_repo_location: String::from("./plugins.repo"),
             installed_cache_location: String::from(".installed"),
             plugin_folder_location: String::from("plugins"),
         }
@@ -29,7 +27,6 @@ impl PluginManager {
                 for line in i.lines() {
                     let data: Vec<&str> = line.split(':').map(|x| x.trim()).collect();
                     match data[0] {
-                        "cache_location" => self.cache_location = data[1].to_string(),
                         "installed_cache_location" => {
                             self.installed_cache_location = data[1].to_string()
                         }
@@ -46,15 +43,12 @@ impl PluginManager {
     }
 
     pub fn cache_repos(&mut self) {
-        self.read_repos();
-        for plugin in &self.plugins{
-            println!("{:?}", plugin);
-        }
-        todo!()
+        self.read_repos(self.plugin_repo_location.clone());
+        todo!();
     }
 
-    fn read_repos(&mut self) {
-        match fs::read_to_string(&self.plugin_repo_location) {
+    fn read_repos(&mut self, location: String) {
+        match fs::read_to_string(location) {
             Ok(i) => {
                 let mut lines = i.lines();
                 let mut line = lines.next();
@@ -69,7 +63,7 @@ impl PluginManager {
                             line = lines.next();
                             while line != None
                                 && line.unwrap().chars().nth(0) != None
-                                    && line.unwrap().chars().nth(0).unwrap() != '['
+                                && line.unwrap().chars().nth(0).unwrap() != '['
                             {
                                 let data: Vec<&str> =
                                     line.unwrap().split('=').map(|x| x.trim()).collect();
@@ -86,14 +80,24 @@ impl PluginManager {
                                         "collection" => plugin_type = PluginType::Collection,
                                         _ => {}
                                     },
-                                    "location" => location = data[1].to_string(),
+                                    "location" => {
+                                        if plugin_type == PluginType::Collection {
+                                            self.read_repos(data[1].to_string());
+                                        }
+                                        location = data[1].to_string();
+                                    }
                                     _ => {}
                                 }
 
                                 line = lines.next();
                             }
 
-                            self.plugins.push(Plugin::new(name, enabled, plugin_type, location));
+                            if plugin_type != PluginType::Repo {
+                                self.plugins.insert(
+                                    name.clone(),
+                                    Plugin::new(name, enabled, plugin_type, location),
+                                );
+                            }
                         }
                     };
                     line = lines.next();
