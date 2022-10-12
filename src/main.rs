@@ -12,7 +12,6 @@ fn main() {
     match env::args().nth(1) {
         Some(first_arg) => {
             match first_arg.as_str() {
-            "update" => update(&mut plug_manager),
             "install" => install(&plug_manager),
             "upgrade" => upgrade(&plug_manager),
 
