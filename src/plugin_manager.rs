@@ -1,4 +1,11 @@
-use std::{collections::HashMap, fs, path::Path, process::exit};
+use std::{
+    collections::HashMap,
+    fs::{self, copy},
+    path::Path,
+    process::{exit, Command, ExitCode, ExitStatus},
+};
+
+use fs_extra::dir::CopyOptions;
 
 use crate::plugin::{Plugin, PluginType};
 
@@ -19,25 +26,37 @@ impl PluginManager {
 
         if !Path::new(&config_location).is_file() {
             if let Err(e) = fs::File::create(&config_location) {
-                println!("Error! Config file is missing and it cannot be created! {}", e)
+                println!(
+                    "Error! Config file is missing and it cannot be created! {}",
+                    e
+                )
             }
         }
 
         if !Path::new(&plugin_repo_location).is_file() {
             if let Err(e) = fs::File::create(&plugin_repo_location) {
-                println!("Error! Repo file is missing and it cannot be created! {}", e)
+                println!(
+                    "Error! Repo file is missing and it cannot be created! {}",
+                    e
+                )
             }
         }
 
         if !Path::new(&installed_cache_location).is_file() {
             if let Err(e) = fs::File::create(&installed_cache_location) {
-                println!("Error! Installed file cache is missing and it cannot be created! {}", e)
+                println!(
+                    "Error! Installed file cache is missing and it cannot be created! {}",
+                    e
+                )
             }
         }
 
         if !Path::new(&plugin_folder_location).is_dir() {
             if let Err(e) = fs::create_dir(&plugin_folder_location) {
-                println!("Error! Plugin folder missing and it cannot be created! {}", e)
+                println!(
+                    "Error! Plugin folder missing and it cannot be created! {}",
+                    e
+                )
             }
         }
 
@@ -88,9 +107,6 @@ impl PluginManager {
 
     pub fn cache_repos(&mut self) {
         self.read_repos(self.plugin_repo_location.clone());
-        for plugin in &self.plugins {
-            println!("{:?}", plugin.1);
-        }
     }
 
     fn read_repos(&mut self, location: String) {
@@ -159,10 +175,13 @@ impl PluginManager {
         for plugin in plugins_to_install {
             if self.plugins.contains_key(&plugin) {
                 if let Some(plugint_to_be_installed) = self.plugins.get(&plugin) {
-                    print!("Installing {}...", plugin);
+                    print!("Installing plugin {}...", plugin);
                     match plugint_to_be_installed.get_plugin_type() {
-                        Local => self.install_local_plugin(plugint_to_be_installed),
-                        Repo => self.install_git_plugin(plugint_to_be_installed),
+                        PluginType::Local => self.install_local_plugin(plugint_to_be_installed),
+                        PluginType::Repo => self.install_git_plugin(plugint_to_be_installed),
+                        _=>{
+                            println!("Wrong plugin type! Skipping {}", plugin)
+                        }
                     }
                 } else {
                     println!("Error getting plugin!");
@@ -172,12 +191,48 @@ impl PluginManager {
     }
 
     fn install_local_plugin(&self, plugin: &Plugin) {
-        if Path::is_dir(Path::new(&plugin.get_location())){
+        if Path::is_dir(Path::new(&plugin.get_location())) {
+            let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
 
-        }else{
-            println!("Cannot find plugin: {}! Skipping...", plugin.get_name());
+            if Path::is_dir(Path::new(&plugin_path)) {
+                println!("Plugin {} is already installed!", plugin.get_name());
+            } else {
+                if let Err(e) = fs_extra::dir::copy(
+                    plugin.get_location(),
+                    &self.plugin_folder_location,
+                    &CopyOptions::new(),
+                ) {
+                    println!(
+                        "Error while installing {}! Skipping plugin! Error: {}",
+                        plugin.get_name(),
+                        e
+                    )
+                }
+                println!("OK!")
+            }
+        } else {
+            println!("Cannot find plugin: {}! Skipping!", plugin.get_name());
         }
     }
 
-    fn install_git_plugin(&self, plugin: &Plugin) {}
+    fn install_git_plugin(&self, plugin: &Plugin) {
+        let status = Command::new("git")
+            .arg("clone")
+            .arg(plugin.get_location())
+            .arg(format!("{}/{}", &self.plugin_folder_location,plugin.get_name()))
+            .status()
+            .expect("Cannot execute git command! Check if it is installed correctly!");
+
+        if let Some(code) = status.code() {
+            if code == 0 {
+                println!("OK!")
+            } else {
+                println!(
+                    "Git error code: {}! Skipping plugin {}!",
+                    code,
+                    plugin.get_name()
+                );
+            }
+        }
+    }
 }

@@ -1,7 +1,12 @@
-[dummy_plugin]
+[test1]
+enabled=true
+type=local
+location=/home/levente/Documents/GitProjects/rpi-mesh-plugin-manager/test_plugins/test1
+
+[rust-lib-point]
 enabled=true
 type=repo
-location=https://www.github.com/DummyPluginMaker/dummy_plugin
+location=https://github.com/SiposLevente/rust-lib-point
 
 [dummy_local]
 enabled=true
