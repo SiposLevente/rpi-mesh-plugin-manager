@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum PluginType {
     Collection,
     Repo,
@@ -8,18 +8,28 @@ pub enum PluginType {
 #[derive(Debug)]
 pub struct Plugin {
     name: String,
-    enabled: bool,
     plugin_type: PluginType,
     location: String,
 }
 
 impl Plugin {
-    pub fn new(name: String, enabled: bool, plugin_type: PluginType, location: String) -> Plugin {
+    pub fn new(name: String, plugin_type: PluginType, location: String) -> Plugin {
         Plugin {
             name,
-            enabled,
             plugin_type,
             location,
         }
+    }
+
+    pub fn get_plugin_type(&self) -> PluginType{
+        self.plugin_type.clone()
+    }
+
+    pub fn get_location(&self) -> String{
+        self.location.clone()
+    }
+
+    pub fn get_name(&self) -> String{
+        self.name.clone()
     }
 }
