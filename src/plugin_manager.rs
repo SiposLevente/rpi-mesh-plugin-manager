@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, path::Path, process::exit};
 
 use crate::plugin::{Plugin, PluginType};
 
@@ -12,13 +12,45 @@ pub struct PluginManager {
 
 impl PluginManager {
     pub fn new() -> PluginManager {
-        PluginManager {
-            plugins: HashMap::new(),
-            config_location: String::from("config.conf"),
-            plugin_repo_location: String::from("./plugins.repo"),
-            installed_cache_location: String::from(".installed"),
-            plugin_folder_location: String::from("plugins"),
+        let config_location = String::from("config.conf");
+        let plugin_repo_location = String::from("plugins.repo");
+        let installed_cache_location = String::from(".installed");
+        let plugin_folder_location = String::from("plugins");
+
+        if !Path::new(&config_location).is_file() {
+            if let Err(e) = fs::File::create(&config_location) {
+                println!("Error! Config file is missing and it cannot be created! {}", e)
+            }
         }
+
+        if !Path::new(&plugin_repo_location).is_file() {
+            if let Err(e) = fs::File::create(&plugin_repo_location) {
+                println!("Error! Repo file is missing and it cannot be created! {}", e)
+            }
+        }
+
+        if !Path::new(&installed_cache_location).is_file() {
+            if let Err(e) = fs::File::create(&installed_cache_location) {
+                println!("Error! Installed file cache is missing and it cannot be created! {}", e)
+            }
+        }
+
+        if !Path::new(&plugin_folder_location).is_dir() {
+            if let Err(e) = fs::create_dir(&plugin_folder_location) {
+                println!("Error! Plugin folder missing and it cannot be created! {}", e)
+            }
+        }
+
+        let mut plugin_manager = PluginManager {
+            plugins: HashMap::new(),
+            config_location,
+            plugin_repo_location,
+            installed_cache_location,
+            plugin_folder_location,
+        };
+
+        plugin_manager.read_config();
+        plugin_manager
     }
 
     pub fn read_config(&mut self) {
@@ -28,30 +60,44 @@ impl PluginManager {
                     let data: Vec<&str> = line.split(':').map(|x| x.trim()).collect();
                     match data[0] {
                         "installed_cache_location" => {
-                            self.installed_cache_location = data[1].to_string()
+                            if Path::new(&data[1].to_string()).is_file() {
+                                self.installed_cache_location = data[1].to_string()
+                            }
                         }
-                        "plugin_repo_location" => self.plugin_repo_location = data[1].to_string(),
+                        "plugin_repo_location" => {
+                            if Path::new(&data[1].to_string()).is_file() {
+                                self.plugin_repo_location = data[1].to_string();
+                            }
+                        }
                         "plugin_folder_location" => {
-                            self.plugin_folder_location = data[1].to_string()
+                            if Path::new(&data[1].to_string()).is_dir() {
+                                self.plugin_folder_location = data[1].to_string();
+                            }
                         }
                         _ => {}
                     }
                 }
             }
-            Err(e) => panic!("{}", e),
+
+            Err(e) => {
+                println!("Error: {}! Exiting plugin manager!", e);
+                exit(1);
+            }
         }
     }
 
     pub fn cache_repos(&mut self) {
         self.read_repos(self.plugin_repo_location.clone());
-        todo!();
+        for plugin in &self.plugins {
+            println!("{:?}", plugin.1);
+        }
     }
 
     fn read_repos(&mut self, location: String) {
         match fs::read_to_string(location) {
             Ok(i) => {
                 let mut lines = i.lines();
-                let mut line = lines.next();
+                let mut line = lines.nth(0);
                 while line != None {
                     if let Some(first_char) = line.unwrap().chars().nth(0) {
                         if first_char == '[' {
@@ -92,18 +138,46 @@ impl PluginManager {
                                 line = lines.next();
                             }
 
-                            if plugin_type != PluginType::Repo {
-                                self.plugins.insert(
-                                    name.clone(),
-                                    Plugin::new(name, enabled, plugin_type, location),
-                                );
+                            if plugin_type != PluginType::Collection && enabled {
+                                self.plugins
+                                    .insert(name.clone(), Plugin::new(name, plugin_type, location));
                             }
                         }
                     };
                     line = lines.next();
                 }
             }
-            Err(e) => panic!("{}", e),
+            Err(e) => {
+                println!("Error: {}! Exiting plugin manager!", e);
+                exit(1);
+            }
         }
     }
+
+    pub fn install(&self, args: std::env::Args) {
+        let plugins_to_install: Vec<String> = args.skip(2).collect();
+        for plugin in plugins_to_install {
+            if self.plugins.contains_key(&plugin) {
+                if let Some(plugint_to_be_installed) = self.plugins.get(&plugin) {
+                    print!("Installing {}...", plugin);
+                    match plugint_to_be_installed.get_plugin_type() {
+                        Local => self.install_local_plugin(plugint_to_be_installed),
+                        Repo => self.install_git_plugin(plugint_to_be_installed),
+                    }
+                } else {
+                    println!("Error getting plugin!");
+                }
+            }
+        }
+    }
+
+    fn install_local_plugin(&self, plugin: &Plugin) {
+        if Path::is_dir(Path::new(&plugin.get_location())){
+
+        }else{
+            println!("Cannot find plugin: {}! Skipping...", plugin.get_name());
+        }
+    }
+
+    fn install_git_plugin(&self, plugin: &Plugin) {}
 }
