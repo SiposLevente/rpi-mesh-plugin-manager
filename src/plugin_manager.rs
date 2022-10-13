@@ -1,8 +1,8 @@
 use std::{
     collections::HashMap,
-    fs::{self, copy},
+    fs::{self},
     path::Path,
-    process::{exit, Command, ExitCode, ExitStatus},
+    process::{exit, Command},
 };
 
 use fs_extra::dir::CopyOptions;
@@ -179,7 +179,7 @@ impl PluginManager {
                     match plugint_to_be_installed.get_plugin_type() {
                         PluginType::Local => self.install_local_plugin(plugint_to_be_installed),
                         PluginType::Repo => self.install_git_plugin(plugint_to_be_installed),
-                        _=>{
+                        _ => {
                             println!("Wrong plugin type! Skipping {}", plugin)
                         }
                     }
@@ -219,7 +219,11 @@ impl PluginManager {
         let status = Command::new("git")
             .arg("clone")
             .arg(plugin.get_location())
-            .arg(format!("{}/{}", &self.plugin_folder_location,plugin.get_name()))
+            .arg(format!(
+                "{}/{}",
+                &self.plugin_folder_location,
+                plugin.get_name()
+            ))
             .status()
             .expect("Cannot execute git command! Check if it is installed correctly!");
 
