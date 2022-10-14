@@ -13,6 +13,7 @@ pub struct PluginManager {
     plugins: HashMap<String, Plugin>,
     config_location: String,
     plugin_repo_location: String,
+    installed_cache_location: String,
     plugin_folder_location: String,
 }
 
@@ -20,6 +21,7 @@ impl PluginManager {
     pub fn new() -> PluginManager {
         let config_location = String::from("config.conf");
         let plugin_repo_location = String::from("plugins.repo");
+        let installed_cache_location = String::from(".installed");
         let plugin_folder_location = String::from("plugins");
 
         if !Path::new(&config_location).is_file() {
@@ -40,6 +42,15 @@ impl PluginManager {
             }
         }
 
+        if !Path::new(&installed_cache_location).is_file() {
+            if let Err(e) = fs::File::create(&installed_cache_location) {
+                println!(
+                    "Error! Installed file cache is missing and it cannot be created! {}",
+                    e
+                )
+            }
+        }
+
         if !Path::new(&plugin_folder_location).is_dir() {
             if let Err(e) = fs::create_dir(&plugin_folder_location) {
                 println!(
@@ -53,6 +64,7 @@ impl PluginManager {
             plugins: HashMap::new(),
             config_location,
             plugin_repo_location,
+            installed_cache_location,
             plugin_folder_location,
         };
 
@@ -66,6 +78,11 @@ impl PluginManager {
                 for line in i.lines() {
                     let data: Vec<&str> = line.split(':').map(|x| x.trim()).collect();
                     match data[0] {
+                        "installed_cache_location" => {
+                            if Path::new(&data[1].to_string()).is_file() {
+                                self.installed_cache_location = data[1].to_string()
+                            }
+                        }
                         "plugin_repo_location" => {
                             if Path::new(&data[1].to_string()).is_file() {
                                 self.plugin_repo_location = data[1].to_string();
