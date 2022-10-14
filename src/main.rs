@@ -11,6 +11,7 @@ fn main() {
     match args().nth(1) {
         Some(first_arg) => match first_arg.as_str() {
             "install" => install(&mut plug_manager),
+            "update" => update(&mut plug_manager),
             "upgrade" => upgrade(&plug_manager),
             "uninstall" => uninstall(&plug_manager),
 
@@ -18,6 +19,10 @@ fn main() {
         },
         None => print_help(),
     }
+}
+
+fn update(plug_manager: &mut PluginManager) {
+    plug_manager.update();
 }
 
 fn uninstall(plug_manager: &PluginManager) {

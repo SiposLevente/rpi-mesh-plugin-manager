@@ -110,59 +110,64 @@ impl PluginManager {
         self.read_repos(self.plugin_repo_location.clone());
     }
 
+    fn load_into_plugins(&mut self, plugins_string: String) {
+        let mut lines = plugins_string.lines();
+        let mut line = lines.nth(0);
+        while line != None {
+            if let Some(first_char) = line.unwrap().chars().nth(0) {
+                if first_char == '[' {
+                    let name = line.unwrap().replace('[', "").replace(']', "");
+                    let mut enabled: bool = false;
+                    let mut plugin_type: PluginType = PluginType::Repo;
+                    let mut location: String = String::new();
+
+                    line = lines.next();
+                    while line != None
+                        && line.unwrap().chars().nth(0) != None
+                        && line.unwrap().chars().nth(0).unwrap() != '['
+                    {
+                        let data: Vec<&str> = line.unwrap().split('=').map(|x| x.trim()).collect();
+
+                        match data[0] {
+                            "enabled" => {
+                                if data[1] == "true" {
+                                    enabled = true;
+                                }
+                            }
+                            "type" => match data[1] {
+                                "repo" => plugin_type = PluginType::Repo,
+                                "local" => plugin_type = PluginType::Local,
+                                "collection" => plugin_type = PluginType::Collection,
+                                _ => {}
+                            },
+                            "location" => {
+                                if plugin_type == PluginType::Collection {
+                                    self.read_repos(data[1].to_string());
+                                }
+                                location = data[1].to_string();
+                            }
+                            _ => {}
+                        }
+
+                        line = lines.next();
+                    }
+
+                    if plugin_type != PluginType::Collection && enabled {
+                        self.plugins.insert(
+                            name.clone(),
+                            Plugin::new(name, enabled, plugin_type, location),
+                        );
+                    }
+                }
+            };
+            line = lines.next();
+        }
+    }
+
     fn read_repos(&mut self, location: String) {
         match fs::read_to_string(location) {
             Ok(i) => {
-                let mut lines = i.lines();
-                let mut line = lines.nth(0);
-                while line != None {
-                    if let Some(first_char) = line.unwrap().chars().nth(0) {
-                        if first_char == '[' {
-                            let name = line.unwrap().replace('[', "").replace(']', "");
-                            let mut enabled: bool = false;
-                            let mut plugin_type: PluginType = PluginType::Repo;
-                            let mut location: String = String::new();
-
-                            line = lines.next();
-                            while line != None
-                                && line.unwrap().chars().nth(0) != None
-                                && line.unwrap().chars().nth(0).unwrap() != '['
-                            {
-                                let data: Vec<&str> =
-                                    line.unwrap().split('=').map(|x| x.trim()).collect();
-
-                                match data[0] {
-                                    "enabled" => {
-                                        if data[1] == "true" {
-                                            enabled = true;
-                                        }
-                                    }
-                                    "type" => match data[1] {
-                                        "repo" => plugin_type = PluginType::Repo,
-                                        "local" => plugin_type = PluginType::Local,
-                                        "collection" => plugin_type = PluginType::Collection,
-                                        _ => {}
-                                    },
-                                    "location" => {
-                                        if plugin_type == PluginType::Collection {
-                                            self.read_repos(data[1].to_string());
-                                        }
-                                        location = data[1].to_string();
-                                    }
-                                    _ => {}
-                                }
-
-                                line = lines.next();
-                            }
-
-                            if plugin_type != PluginType::Collection && enabled {
-                                self.plugins
-                                    .insert(name.clone(), Plugin::new(name, plugin_type, location));
-                            }
-                        }
-                    };
-                    line = lines.next();
-                }
+                self.load_into_plugins(i);
             }
             Err(e) => {
                 println!("Error: {}! Exiting plugin manager!", e);
@@ -226,7 +231,7 @@ impl PluginManager {
                     )
                 } else {
                     if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
-                        if !self.run_setup(plugin_path){
+                        if !self.run_setup(plugin_path) {
                             print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
                         }
                     }
@@ -253,9 +258,10 @@ impl PluginManager {
 
         if let Some(code) = status.code() {
             if code == 0 {
-                let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
+                let plugin_path =
+                    format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
                 if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
-                    if !self.run_setup(plugin_path){
+                    if !self.run_setup(plugin_path) {
                         print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
                     }
                 }
@@ -434,6 +440,22 @@ impl PluginManager {
                     println!("Error getting plugin!");
                 }
             }
+        }
+    }
+
+    pub fn update(&mut self) {
+        print!("Updating repos...");
+        self.cache_repos();
+        if let Ok(resp) = reqwest::blocking::get(
+            "https://raw.githubusercontent.com/SiposLevente/rpi-mesh-plugin-manager/main/plugins.repo",
+        ) {
+            if let Ok(text) = resp.text() {
+                self.load_into_plugins(text);
+            } else{
+                println!("Error while getting text from remote repo");
+            }
+        } else{
+            println!("Error while getting remote repoes!");
         }
     }
 }
