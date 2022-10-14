@@ -191,6 +191,22 @@ impl PluginManager {
         }
     }
 
+    fn run_setup(&self, plugin_location: String) -> bool {
+        if let Ok(status) = Command::new(format!("{}/setup.sh", plugin_location)).status() {
+            if let Some(code) = status.code() {
+                if code == 0 {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            println!("Error getting status code from setup script!");
+            return false;
+        }
+        println!("Error running setup script!");
+        false
+    }
+
     fn install_local_plugin(&self, plugin: &Plugin) {
         if Path::is_dir(Path::new(&plugin.get_location())) {
             let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
@@ -209,6 +225,11 @@ impl PluginManager {
                         e
                     )
                 } else {
+                    if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
+                        if !self.run_setup(plugin_path){
+                            print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
+                        }
+                    }
                     self.add_to_installed_cache(plugin.get_name(), true);
                     println!("OK!")
                 }
@@ -232,6 +253,12 @@ impl PluginManager {
 
         if let Some(code) = status.code() {
             if code == 0 {
+                let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
+                if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
+                    if !self.run_setup(plugin_path){
+                        print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
+                    }
+                }
                 self.add_to_installed_cache(plugin.get_name(), true);
                 println!("OK!")
             } else {
@@ -393,8 +420,11 @@ impl PluginManager {
                                 content.push_str(tmp_plugin.as_str());
                             }
 
-                            if let Err(e) = fs::write(&self.installed_cache_location,  content) {
-                                println!("Error while writing to installed plugin cache! Error: {}", e);
+                            if let Err(e) = fs::write(&self.installed_cache_location, content) {
+                                println!(
+                                    "Error while writing to installed plugin cache! Error: {}",
+                                    e
+                                );
                             }
                         }
                     } else {
