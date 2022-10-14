@@ -13,7 +13,6 @@ pub struct PluginManager {
     plugins: HashMap<String, Plugin>,
     config_location: String,
     plugin_repo_location: String,
-    installed_cache_location: String,
     plugin_folder_location: String,
 }
 
@@ -21,7 +20,6 @@ impl PluginManager {
     pub fn new() -> PluginManager {
         let config_location = String::from("config.conf");
         let plugin_repo_location = String::from("plugins.repo");
-        let installed_cache_location = String::from(".installed");
         let plugin_folder_location = String::from("plugins");
 
         if !Path::new(&config_location).is_file() {
@@ -42,15 +40,6 @@ impl PluginManager {
             }
         }
 
-        if !Path::new(&installed_cache_location).is_file() {
-            if let Err(e) = fs::File::create(&installed_cache_location) {
-                println!(
-                    "Error! Installed file cache is missing and it cannot be created! {}",
-                    e
-                )
-            }
-        }
-
         if !Path::new(&plugin_folder_location).is_dir() {
             if let Err(e) = fs::create_dir(&plugin_folder_location) {
                 println!(
@@ -64,7 +53,6 @@ impl PluginManager {
             plugins: HashMap::new(),
             config_location,
             plugin_repo_location,
-            installed_cache_location,
             plugin_folder_location,
         };
 
@@ -78,11 +66,6 @@ impl PluginManager {
                 for line in i.lines() {
                     let data: Vec<&str> = line.split(':').map(|x| x.trim()).collect();
                     match data[0] {
-                        "installed_cache_location" => {
-                            if Path::new(&data[1].to_string()).is_file() {
-                                self.installed_cache_location = data[1].to_string()
-                            }
-                        }
                         "plugin_repo_location" => {
                             if Path::new(&data[1].to_string()).is_file() {
                                 self.plugin_repo_location = data[1].to_string();
@@ -230,6 +213,79 @@ impl PluginManager {
         if let Some(code) = status.code() {
             if code == 0 {
                 println!("OK!")
+            } else {
+                println!(
+                    "Git error code: {}! Skipping plugin {}!",
+                    code,
+                    plugin.get_name()
+                );
+            }
+        }
+    }
+
+    pub fn upgrade(&self, args: std::env::Args) {
+        let plugins_to_upgrade: Vec<String> = args.skip(2).collect();
+        for plugin in plugins_to_upgrade {
+            if self.plugins.contains_key(&plugin) {
+                if let Some(plugint_to_be_upgraded) = self.plugins.get(&plugin) {
+                    print!("Upgrading plugin {}...", plugin);
+                    match plugint_to_be_upgraded.get_plugin_type() {
+                        PluginType::Local => self.upgrade_local_plugin(plugint_to_be_upgraded),
+                        PluginType::Repo => self.upgrade_git_plugin(plugint_to_be_upgraded),
+                        _ => {
+                            println!("Wrong plugin type! Skipping {}", plugin)
+                        }
+                    }
+                } else {
+                    println!("Error getting plugin!");
+                }
+            }
+        }
+    }
+
+    pub fn upgrade_local_plugin(&self, plugin: &Plugin) {
+        if Path::is_dir(Path::new(&plugin.get_location())) {
+            let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
+
+            if Path::is_dir(Path::new(&plugin_path)) {
+                let mut options = CopyOptions::new();
+                options.overwrite = true;
+                if let Err(e) = fs_extra::dir::copy(
+                    plugin.get_location(),
+                    &self.plugin_folder_location,
+                    &options,
+                ) {
+                    println!(
+                        "Error while upgrading {}! Skipping plugin! Error: {}",
+                        plugin.get_name(),
+                        e
+                    )
+                }else{
+                    println!("OK!");
+                }
+
+            } else {
+                println!("Plugin {} is not installed so it cannot be upgraded!", plugin.get_name());
+            }
+        } else {
+            println!("Cannot find plugin: {}! Skipping!", plugin.get_name());
+        }
+    }
+
+    pub fn upgrade_git_plugin(&self, plugin: &Plugin) {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(format!(
+                "{}/{}",
+                &self.plugin_folder_location,
+                plugin.get_name()
+            )).arg("pull")
+            .status()
+            .expect("Cannot execute git command! Check if it is installed correctly!");
+
+        if let Some(code) = status.code() {
+            if code == 0 {
+                println!("OK!");
             } else {
                 println!(
                     "Git error code: {}! Skipping plugin {}!",
