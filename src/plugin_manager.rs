@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    env::args,
     fs::{self, OpenOptions},
     io::prelude::*,
     path::Path,
@@ -390,7 +389,7 @@ impl PluginManager {
                             let mut content = String::new();
 
                             for installed_plugin in installed_plugins {
-                                let mut tmp_plugin: String = installed_plugin;
+                                let tmp_plugin: String = installed_plugin;
                                 content.push_str(tmp_plugin.as_str());
                             }
 
