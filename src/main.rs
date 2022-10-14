@@ -12,11 +12,16 @@ fn main() {
         Some(first_arg) => match first_arg.as_str() {
             "install" => install(&mut plug_manager),
             "upgrade" => upgrade(&plug_manager),
+            "uninstall" => uninstall(&plug_manager),
 
             _ => print_help(),
         },
         None => print_help(),
     }
+}
+
+fn uninstall(plug_manager: &PluginManager) {
+    plug_manager.uninstall(args());
 }
 
 fn upgrade(plug_manager: &PluginManager) {

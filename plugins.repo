@@ -8,6 +8,11 @@ enabled=true
 type=repo
 location=https://github.com/SiposLevente/rust-lib-point
 
+[zsh-setup]
+enabled=true
+type=repo
+location=https://github.com/SiposLevente/zsh-setup
+
 [dummy_local]
 enabled=true
 type=local

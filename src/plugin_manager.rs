@@ -1,11 +1,13 @@
 use std::{
     collections::HashMap,
-    fs::{self},
+    env::args,
+    fs::{self, OpenOptions},
+    io::prelude::*,
     path::Path,
     process::{exit, Command},
 };
 
-use fs_extra::dir::CopyOptions;
+use fs_extra::{dir::CopyOptions, file::read_to_string};
 
 use crate::plugin::{Plugin, PluginType};
 
@@ -207,8 +209,10 @@ impl PluginManager {
                         plugin.get_name(),
                         e
                     )
+                } else {
+                    self.add_to_installed_cache(plugin.get_name(), true);
+                    println!("OK!")
                 }
-                println!("OK!")
             }
         } else {
             println!("Cannot find plugin: {}! Skipping!", plugin.get_name());
@@ -229,6 +233,7 @@ impl PluginManager {
 
         if let Some(code) = status.code() {
             if code == 0 {
+                self.add_to_installed_cache(plugin.get_name(), true);
                 println!("OK!")
             } else {
                 println!(
@@ -241,20 +246,24 @@ impl PluginManager {
     }
 
     pub fn upgrade(&self, args: std::env::Args) {
-        let plugins_to_upgrade: Vec<String> = args.skip(2).collect();
-        for plugin in plugins_to_upgrade {
-            if self.plugins.contains_key(&plugin) {
-                if let Some(plugint_to_be_upgraded) = self.plugins.get(&plugin) {
-                    print!("Upgrading plugin {}...", plugin);
-                    match plugint_to_be_upgraded.get_plugin_type() {
-                        PluginType::Local => self.upgrade_local_plugin(plugint_to_be_upgraded),
-                        PluginType::Repo => self.upgrade_git_plugin(plugint_to_be_upgraded),
-                        _ => {
-                            println!("Wrong plugin type! Skipping {}", plugin)
+        if args.len() < 3 {
+            self.upgrade_all(self.get_installed_plugins());
+        } else {
+            let plugins_to_upgrade: Vec<String> = args.skip(2).collect();
+            for plugin in plugins_to_upgrade {
+                if self.plugins.contains_key(&plugin) {
+                    if let Some(plugint_to_be_upgraded) = self.plugins.get(&plugin) {
+                        print!("Upgrading plugin {}...", plugin);
+                        match plugint_to_be_upgraded.get_plugin_type() {
+                            PluginType::Local => self.upgrade_local_plugin(plugint_to_be_upgraded),
+                            PluginType::Repo => self.upgrade_git_plugin(plugint_to_be_upgraded),
+                            _ => {
+                                println!("Wrong plugin type! Skipping {}", plugin)
+                            }
                         }
+                    } else {
+                        println!("Error getting plugin!");
                     }
-                } else {
-                    println!("Error getting plugin!");
                 }
             }
         }
@@ -264,7 +273,7 @@ impl PluginManager {
         if Path::is_dir(Path::new(&plugin.get_location())) {
             let plugin_path = format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
 
-            if Path::is_dir(Path::new(&plugin_path)) {
+            if Path::is_dir(Path::new(&plugin_path)) && plugin.get_name() != "" {
                 let mut options = CopyOptions::new();
                 options.overwrite = true;
                 if let Err(e) = fs_extra::dir::copy(
@@ -277,12 +286,14 @@ impl PluginManager {
                         plugin.get_name(),
                         e
                     )
-                }else{
+                } else {
                     println!("OK!");
                 }
-
             } else {
-                println!("Plugin {} is not installed so it cannot be upgraded!", plugin.get_name());
+                println!(
+                    "Plugin {} is not installed so it cannot be upgraded!",
+                    plugin.get_name()
+                );
             }
         } else {
             println!("Cannot find plugin: {}! Skipping!", plugin.get_name());
@@ -296,7 +307,8 @@ impl PluginManager {
                 "{}/{}",
                 &self.plugin_folder_location,
                 plugin.get_name()
-            )).arg("pull")
+            ))
+            .arg("pull")
             .status()
             .expect("Cannot execute git command! Check if it is installed correctly!");
 
@@ -309,6 +321,89 @@ impl PluginManager {
                     code,
                     plugin.get_name()
                 );
+            }
+        }
+    }
+
+    fn upgrade_all(&self, plugins: Vec<String>) {
+        for plugin in plugins {
+            if let Some(seclected_plugin) = self.plugins.get(&plugin) {
+                print!("Upgrading plugin {}...", plugin);
+                match seclected_plugin.get_plugin_type() {
+                    PluginType::Local => self.upgrade_local_plugin(seclected_plugin),
+                    PluginType::Repo => self.upgrade_git_plugin(seclected_plugin),
+                    _ => {
+                        println!("Wrong plugin type! Skipping {}", plugin)
+                    }
+                }
+            } else {
+                println!("Skipping {}! No such plugin!", plugin);
+            }
+        }
+    }
+
+    fn add_to_installed_cache(&self, plugin_name: String, append: bool) {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(append)
+            .open(&self.installed_cache_location)
+            .expect("Cannot open installed cache!");
+
+        if let Err(e) = writeln!(file, "{}", plugin_name) {
+            println!("Cannot write to installed cache! Error: {}", e)
+        }
+    }
+
+    fn get_installed_plugins(&self) -> Vec<String> {
+        read_to_string(&self.installed_cache_location)
+            .expect("Cannot read installed cache!")
+            .split("\n")
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .clone()
+    }
+
+    pub fn uninstall(&self, args: std::env::Args) {
+        let plugins_to_delete: Vec<String> = args.skip(2).collect();
+        for plugin in plugins_to_delete {
+            if self.plugins.contains_key(&plugin) {
+                if let Some(plugint_to_be_uninstalled) = self.plugins.get(&plugin) {
+                    let plugin_path = format!(
+                        "{}/{}",
+                        &self.plugin_folder_location,
+                        &plugint_to_be_uninstalled.get_name()
+                    );
+
+                    if Path::new(&plugin_path).is_dir() {
+                        print!("Uninstalling plugin {}...", plugin);
+
+                        if let Err(e) = fs::remove_dir_all(plugin_path) {
+                            println!("Error while uninstalling {}! Error: {}", plugin, e);
+                        } else {
+                            println!("Ok!");
+                            let mut installed_plugins = self.get_installed_plugins();
+                            let remove_index = installed_plugins
+                                .iter()
+                                .position(|x| x == &plugin && x != "")
+                                .unwrap();
+                            installed_plugins.remove(remove_index);
+                            let mut content = String::new();
+
+                            for installed_plugin in installed_plugins {
+                                let mut tmp_plugin: String = installed_plugin;
+                                content.push_str(tmp_plugin.as_str());
+                            }
+
+                            if let Err(e) = fs::write(&self.installed_cache_location,  content) {
+                                println!("Error while writing to installed plugin cache! Error: {}", e);
+                            }
+                        }
+                    } else {
+                        println!("Plugin {} is not installed!", plugin);
+                    }
+                } else {
+                    println!("Error getting plugin!");
+                }
             }
         }
     }
