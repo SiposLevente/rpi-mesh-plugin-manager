@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs::{self, OpenOptions},
+    fs::{self, OpenOptions, read_dir},
     io::prelude::*,
     path::Path,
     process::{exit, Command},
@@ -13,7 +13,8 @@ use crate::plugin::{Plugin, PluginType};
 pub struct PluginManager {
     plugins: HashMap<String, Plugin>,
     config_location: String,
-    plugin_repo_location: String,
+    official_repo_location: String,
+    repo_folder_location: String,
     installed_cache_location: String,
     plugin_folder_location: String,
 }
@@ -21,23 +22,24 @@ pub struct PluginManager {
 impl PluginManager {
     pub fn new() -> PluginManager {
         let config_location = String::from("config.conf");
-        let plugin_repo_location = String::from("plugins.repo");
+        let official_repo_location = String::from("repos/plugins.repo");
+        let repo_folder_location = String::from("repos");
         let installed_cache_location = String::from(".installed");
         let plugin_folder_location = String::from("plugins");
 
         if !Path::new(&config_location).is_file() {
             if let Err(e) = fs::File::create(&config_location) {
                 println!(
-                    "Error! Config file is missing and it cannot be created! {}",
+                    "Error! Config file is missing and, it cannot be created! {}",
                     e
                 )
             }
         }
 
-        if !Path::new(&plugin_repo_location).is_file() {
-            if let Err(e) = fs::File::create(&plugin_repo_location) {
+        if !Path::new(&official_repo_location).is_file() {
+            if let Err(e) = fs::File::create(&official_repo_location) {
                 println!(
-                    "Error! Repo file is missing and it cannot be created! {}",
+                    "Error! Repo file is missing and, it cannot be created! {}",
                     e
                 )
             }
@@ -46,7 +48,7 @@ impl PluginManager {
         if !Path::new(&installed_cache_location).is_file() {
             if let Err(e) = fs::File::create(&installed_cache_location) {
                 println!(
-                    "Error! Installed file cache is missing and it cannot be created! {}",
+                    "Error! Installed file cache is missing and, it cannot be created! {}",
                     e
                 )
             }
@@ -55,7 +57,16 @@ impl PluginManager {
         if !Path::new(&plugin_folder_location).is_dir() {
             if let Err(e) = fs::create_dir(&plugin_folder_location) {
                 println!(
-                    "Error! Plugin folder missing and it cannot be created! {}",
+                    "Error! Plugin folder missing and, it cannot be created! {}",
+                    e
+                )
+            }
+        }
+
+        if !Path::new(&repo_folder_location).is_dir() {
+            if let Err(e) = fs::create_dir(&repo_folder_location) {
+                println!(
+                    "Error! Repo folder missing and, it cannot be created! {}",
                     e
                 )
             }
@@ -64,7 +75,8 @@ impl PluginManager {
         let mut plugin_manager = PluginManager {
             plugins: HashMap::new(),
             config_location,
-            plugin_repo_location,
+            repo_folder_location,
+            official_repo_location,
             installed_cache_location,
             plugin_folder_location,
         };
@@ -84,9 +96,14 @@ impl PluginManager {
                                 self.installed_cache_location = data[1].to_string()
                             }
                         }
-                        "plugin_repo_location" => {
+                        "official_repo_location" => {
                             if Path::new(&data[1].to_string()).is_file() {
-                                self.plugin_repo_location = data[1].to_string();
+                                self.official_repo_location = data[1].to_string();
+                            }
+                        }
+                        "repo_folder_location" => {
+                            if Path::new(&data[1].to_string()).is_file() {
+                                self.repo_folder_location = data[1].to_string();
                             }
                         }
                         "plugin_folder_location" => {
@@ -107,7 +124,18 @@ impl PluginManager {
     }
 
     pub fn cache_repos(&mut self) {
-        self.read_repos(self.plugin_repo_location.clone());
+        self.read_repos(self.official_repo_location.clone());
+        match read_dir(&self.repo_folder_location){
+            Ok(repos) => {
+                for repo in repos{
+                    match repo {
+                        Ok(name) => self.read_repos(name.path().display().to_string()),
+                        Err(e) => println!("Error while gettin repo! Error: {}", &e),
+                    }
+                }
+            },
+            Err(e) => println!("Error while gettin repos folder location! Error: {}", &e),
+        };
     }
 
     fn load_into_plugins(&mut self, plugins_string: String) {
@@ -445,14 +473,20 @@ impl PluginManager {
 
     pub fn update(&mut self) {
         print!("Updating repos...");
-        self.cache_repos();
         if let Ok(resp) = reqwest::blocking::get(
             "https://raw.githubusercontent.com/SiposLevente/rpi-mesh-plugin-manager/main/plugins.repo",
         ) {
             if let Ok(text) = resp.text() {
-                self.load_into_plugins(text);
+                let mut file = OpenOptions::new().write(true)
+                .append(false)
+                .open(&self.official_repo_location)
+                .expect("Cannot open official repo for upgrading!");
+
+                if let Err(e) = writeln!(file, "{}", text) {
+                    println!("Cannot write to official repo! Error: {}", e)
+                }
             } else{
-                println!("Error while getting text from remote repo");
+                println!("Error while getting text from remote repo!");
             }
         } else{
             println!("Error while getting remote repoes!");
