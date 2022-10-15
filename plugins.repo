@@ -17,8 +17,3 @@ location=https://github.com/SiposLevente/zsh-setup
 enabled=true
 type=local
 location=/home/dummy/projects/someplugin
-
-[dummy_repo]
-enabled=true
-type=collection
-location=plugins2.repo
