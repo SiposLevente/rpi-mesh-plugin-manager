@@ -1,9 +1,0 @@
-[dummy_plugin]
-enabled=true
-type=repo
-location=https://www.github.com/DummyPluginMaker/dummy_plugin
-
-[dummy_local]
-enabled=true
-type=local
-location=/home/dummy/projects/someplugin
