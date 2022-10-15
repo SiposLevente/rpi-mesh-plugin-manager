@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs::{self, OpenOptions, read_dir},
+    fs::{self, read_dir, OpenOptions},
     io::prelude::*,
     path::Path,
     process::{exit, Command},
@@ -22,7 +22,7 @@ pub struct PluginManager {
 impl PluginManager {
     pub fn new() -> PluginManager {
         let config_location = String::from("config.conf");
-        let official_repo_location = String::from("repos/plugins.repo");
+        let official_repo_location = String::from("plugins.repo");
         let repo_folder_location = String::from("repos");
         let installed_cache_location = String::from(".installed");
         let plugin_folder_location = String::from("plugins");
@@ -125,15 +125,18 @@ impl PluginManager {
 
     pub fn cache_repos(&mut self) {
         self.read_repos(self.official_repo_location.clone());
-        match read_dir(&self.repo_folder_location){
+
+        match read_dir(&self.repo_folder_location) {
             Ok(repos) => {
-                for repo in repos{
+                for repo in repos {
                     match repo {
-                        Ok(name) => self.read_repos(name.path().display().to_string()),
+                        Ok(name) => {
+                            self.read_repos(name.path().display().to_string());
+                        }
                         Err(e) => println!("Error while gettin repo! Error: {}", &e),
                     }
                 }
-            },
+            }
             Err(e) => println!("Error while gettin repos folder location! Error: {}", &e),
         };
     }
@@ -472,7 +475,7 @@ impl PluginManager {
     }
 
     pub fn update(&mut self) {
-        print!("Updating repos...");
+        print!("Updating official repo...");
         if let Ok(resp) = reqwest::blocking::get(
             "https://raw.githubusercontent.com/SiposLevente/rpi-mesh-plugin-manager/main/plugins.repo",
         ) {
@@ -485,6 +488,7 @@ impl PluginManager {
                 if let Err(e) = writeln!(file, "{}", text) {
                     println!("Cannot write to official repo! Error: {}", e)
                 }
+                println!("OK!")
             } else{
                 println!("Error while getting text from remote repo!");
             }
