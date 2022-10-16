@@ -476,24 +476,71 @@ impl PluginManager {
 
     pub fn update(&mut self) {
         print!("Updating official repo...");
-        if let Ok(resp) = reqwest::blocking::get(
-            "https://raw.githubusercontent.com/SiposLevente/rpi-mesh-plugin-manager/main/plugins.repo",
-        ) {
-            if let Ok(text) = resp.text() {
-                let mut file = OpenOptions::new().write(true)
-                .append(false)
-                .open(&self.official_repo_location)
-                .expect("Cannot open official repo for upgrading!");
+        self.update_repo(&self.official_repo_location);
 
-                if let Err(e) = writeln!(file, "{}", text) {
-                    println!("Cannot write to official repo! Error: {}", e)
+        match read_dir(&self.repo_folder_location) {
+            Ok(repos) => {
+                for repo in repos {
+                    match repo {
+                        Ok(name) => {
+                            print!("Updating {} repo...", name.file_name().to_str().unwrap());
+                            self.update_repo(&name.path().display().to_string());
+                        }
+                        Err(e) => println!("Error while gettin repo! Error: {}", &e),
+                    }
                 }
-                println!("OK!")
-            } else{
-                println!("Error while getting text from remote repo!");
             }
-        } else{
-            println!("Error while getting remote repoes!");
+            Err(e) => println!("Error while gettin repos folder location! Error: {}", &e),
+        };
+    }
+
+    pub fn update_repo(&self, location: &String) {
+        match self.get_remote_from_config(&location){
+            Some(remote) => {
+                if let Ok(resp) = reqwest::blocking::get(
+                    remote,
+                ) {
+                    if let Ok(text) = resp.text() {
+                        let mut file = OpenOptions::new().write(true)
+                        .append(false)
+                        .open(location)
+                        .expect("Cannot open repo for upgrading!");
+
+                        if let Err(e) = writeln!(file, "{}", text) {
+                            println!("Cannot write to repo! Error: {}", e)
+                        }
+                        println!("OK!")
+                    } else{
+                        println!("Error while getting text from remote repo!");
+                    }
+                } else{
+                    println!("Error while getting remote repoes!");
+                }
+            },
+            None => println!("Skipping! No remote defined in repo!"),
         }
+    }
+
+    fn get_remote_from_config(&self, location: &String) -> Option<String> {
+        let mut remote_url: Option<String> = None;
+
+        match fs::read_to_string(location) {
+            Ok(i) => {
+                if i.contains("remote") {
+                    for line in i.lines() {
+                        let data: Vec<&str> = line.split('=').map(|x| x.trim()).collect();
+                        if let "remote" = data[0] {
+                            remote_url = Some(data[1].to_string());
+                            break;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Error: {}! Exiting plugin manager!", e);
+                exit(1);
+            }
+        }
+        remote_url
     }
 }
