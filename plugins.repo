@@ -1,19 +1,6 @@
-[test1]
-enabled=true
-type=local
-location=/home/levente/Documents/GitProjects/rpi-mesh-plugin-manager/test_plugins/test1
+remote=https://raw.githubusercontent.com/SiposLevente/rpi-mesh-plugin-manager/main/plugins.repo
 
-[rust-lib-point]
+[rpi-mesh-dhcp-plugin]
 enabled=true
 type=repo
-location=https://github.com/SiposLevente/rust-lib-point
-
-[zsh-setup]
-enabled=true
-type=repo
-location=https://github.com/SiposLevente/zsh-setup
-
-[dummy_local]
-enabled=true
-type=local
-location=/home/dummy/projects/someplugin
+location=https://github.com/SiposLevente/rpi-mesh-dhcp-plugin
