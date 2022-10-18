@@ -38,5 +38,5 @@ fn install(plug_manager: &mut PluginManager) {
 }
 
 fn print_help() {
-    println!("RPi mesh's plugin manager\n\nUSAGE:rpi-mesh-plugin-manager [OPTIONS] [PLUGIN NAME]\n\nCOMMANDS:\n\n\tinstall - Installs the specified plugin\n\tupdate - Updates repositories\n\tupgrade - Upgrades specific plugins. Upgrades all plugins when none are specified.\n\tuninstall - Uninstalls specified plugin\n\thelp - Displays this text");
+    println!("RPi mesh's plugin manager\n\nUSAGE:\n\trpi-mesh-plugin-manager [OPTIONS] [PLUGIN NAME]\n\nCOMMANDS:\n\tinstall - Installs the specified plugin\n\tupdate - Updates repositories\n\tupgrade - Upgrades specific plugins. Upgrades all plugins when none are specified.\n\tuninstall - Uninstalls specified plugin\n\thelp - Displays this text");
 }
