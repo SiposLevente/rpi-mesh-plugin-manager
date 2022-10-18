@@ -13,3 +13,4 @@ fi
 
 cp ./target/release/rpi-mesh-plugin-manager /bin/
 mkdir -p /etc/rpi-mesh-plugin-manager
+cp ./plugins.repo /etc/rpi-mesh-plugin-manager
