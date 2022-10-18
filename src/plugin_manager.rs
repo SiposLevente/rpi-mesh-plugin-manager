@@ -234,7 +234,7 @@ impl PluginManager {
     }
 
     fn run_setup(&self, plugin_location: String) -> bool {
-        if let Ok(status) = Command::new(format!("{}/setup.sh", plugin_location)).status() {
+        if let Ok(status) = Command::new(format!("{}/setup_scripts/setup.sh", plugin_location)).status() {
             if let Some(code) = status.code() {
                 if code == 0 {
                     return true;
@@ -267,7 +267,7 @@ impl PluginManager {
                         e
                     )
                 } else {
-                    if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
+                    if Path::new(&format!("{}/setup_scripts/setup.sh", plugin_path)).is_file() {
                         if !self.run_setup(plugin_path) {
                             print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
                         }
@@ -297,7 +297,7 @@ impl PluginManager {
             if code == 0 {
                 let plugin_path =
                     format!("{}/{}", &self.plugin_folder_location, &plugin.get_name());
-                if Path::new(&format!("{}/setup.sh", plugin_path)).is_file() {
+                if Path::new(&format!("{}/setup_scripts/setup.sh", plugin_path)).is_file() {
                     if !self.run_setup(plugin_path) {
                         print!("Error while running setup script! Pluginin is copied to plugin forder! Please manually install {} plugin if installation is needed!", plugin.get_name());
                     }
