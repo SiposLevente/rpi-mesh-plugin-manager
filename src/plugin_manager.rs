@@ -21,11 +21,11 @@ pub struct PluginManager {
 
 impl PluginManager {
     pub fn new() -> PluginManager {
-        let config_location = String::from("config.conf");
-        let official_repo_location = String::from("plugins.repo");
-        let repo_folder_location = String::from("repos");
-        let installed_cache_location = String::from(".installed");
-        let plugin_folder_location = String::from("plugins");
+        let config_location = String::from("/etc/rpi-mesh-plugin-manager/config.conf");
+        let official_repo_location = String::from("/etc/rpi-mesh-plugin-manager/plugins.repo");
+        let repo_folder_location = String::from("/etc/rpi-mesh-plugin-manager/repos");
+        let installed_cache_location = String::from("/etc/rpi-mesh-plugin-manager/.installed");
+        let plugin_folder_location = String::from("/var/www/html/plugins");
 
         if !Path::new(&config_location).is_file() {
             if let Err(e) = fs::File::create(&config_location) {
