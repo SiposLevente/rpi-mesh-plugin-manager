@@ -14,11 +14,16 @@ fn main() {
             "update" => update(&mut plug_manager),
             "upgrade" => upgrade(&plug_manager),
             "uninstall" => uninstall(&plug_manager),
+            "list" => list(&plug_manager),
 
             _ => print_help(),
         },
         None => print_help(),
     }
+}
+
+fn list(plug_manager: &PluginManager) {
+    println!("{}", plug_manager.list());
 }
 
 fn update(plug_manager: &mut PluginManager) {
@@ -38,5 +43,5 @@ fn install(plug_manager: &mut PluginManager) {
 }
 
 fn print_help() {
-    println!("RPi mesh's plugin manager\n\nUSAGE:\n\trpi-mesh-plugin-manager [OPTIONS] [PLUGIN NAME]\n\nCOMMANDS:\n\tinstall - Installs the specified plugin\n\tupdate - Updates repositories\n\tupgrade - Upgrades specific plugins. Upgrades all plugins when none are specified.\n\tuninstall - Uninstalls specified plugin\n\thelp - Displays this text");
+    println!("RPi mesh's plugin manager\n\nUSAGE:\n\trpi-mesh-plugin-manager [OPTIONS] [PLUGIN NAME]\n\nCOMMANDS:\n\tinstall\t\t\tInstalls the specified plugin\n\tupdate\t\t\tUpdates repositories\n\tupgrade\t\t\tUpgrades specific plugins. Upgrades all plugins when none are specified.\n\tuninstall\t\tUninstalls specified plugin\n\tlist\t\t\tDisplays a list of available plugins\n\thelp\t\t\tDisplays this text");
 }
