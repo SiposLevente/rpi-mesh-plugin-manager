@@ -208,6 +208,10 @@ impl PluginManager {
     }
 
     pub fn install(&self, args: std::env::Args) {
+        if self.plugins.len() == 0 {
+            println!("No plugins found in repos! Please run 'rpi-mesh-plugin-manager update'!");
+            exit(1);
+        }
         let plugins_to_install: Vec<String> = args.skip(2).collect();
         for plugin in plugins_to_install {
             if self.plugins.contains_key(&plugin) {
@@ -223,6 +227,8 @@ impl PluginManager {
                 } else {
                     println!("Error getting plugin!");
                 }
+            } else {
+                println!("No plugin named {}! Skipping!", plugin);
             }
         }
     }
@@ -309,6 +315,10 @@ impl PluginManager {
     }
 
     pub fn upgrade(&self, args: std::env::Args) {
+        if self.plugins.len() == 0 {
+            println!("No plugins found in repos! Please run 'rpi-mesh-plugin-manager update'!");
+            exit(1);
+        }
         if args.len() < 3 {
             self.upgrade_all(self.get_installed_plugins());
         } else {
@@ -427,6 +437,10 @@ impl PluginManager {
     }
 
     pub fn uninstall(&self, args: std::env::Args) {
+        if self.plugins.len() == 0 {
+            println!("No plugins found in repos! Please run 'rpi-mesh-plugin-manager update'!");
+            exit(1);
+        }
         let plugins_to_delete: Vec<String> = args.skip(2).collect();
         for plugin in plugins_to_delete {
             if self.plugins.contains_key(&plugin) {
@@ -495,28 +509,27 @@ impl PluginManager {
     }
 
     pub fn update_repo(&self, location: &String) {
-        match self.get_remote_from_config(&location){
+        match self.get_remote_from_config(&location) {
             Some(remote) => {
-                if let Ok(resp) = reqwest::blocking::get(
-                    remote,
-                ) {
+                if let Ok(resp) = reqwest::blocking::get(remote) {
                     if let Ok(text) = resp.text() {
-                        let mut file = OpenOptions::new().write(true)
-                        .append(false)
-                        .open(location)
-                        .expect("Cannot open repo for upgrading!");
+                        let mut file = OpenOptions::new()
+                            .write(true)
+                            .append(false)
+                            .open(location)
+                            .expect("Cannot open repo for upgrading!");
 
                         if let Err(e) = writeln!(file, "{}", text) {
                             println!("Cannot write to repo! Error: {}", e)
                         }
                         println!("OK!")
-                    } else{
+                    } else {
                         println!("Error while getting text from remote repo!");
                     }
-                } else{
+                } else {
                     println!("Error while getting remote repoes!");
                 }
-            },
+            }
             None => println!("Skipping! No remote defined in repo!"),
         }
     }
