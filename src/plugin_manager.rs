@@ -27,6 +27,12 @@ impl PluginManager {
         let installed_cache_location = String::from("/etc/rpi-mesh-plugin-manager/.installed");
         let plugin_folder_location = String::from("/var/www/html/plugins");
 
+        // let config_location = String::from("config.conf");
+        // let official_repo_location = String::from("plugins.repo");
+        // let repo_folder_location = String::from("repos");
+        // let installed_cache_location = String::from(".installed");
+        // let plugin_folder_location = String::from("plugins");
+
         if !Path::new(&config_location).is_file() {
             if let Err(e) = fs::File::create(&config_location) {
                 println!(
@@ -234,7 +240,9 @@ impl PluginManager {
     }
 
     fn run_setup(&self, plugin_location: String) -> bool {
-        if let Ok(status) = Command::new(format!("{}/setup_scripts/setup.sh", plugin_location)).status() {
+        if let Ok(status) =
+            Command::new(format!("{}/setup_scripts/setup.sh", plugin_location)).status()
+        {
             if let Some(code) = status.code() {
                 if code == 0 {
                     return true;
@@ -555,5 +563,16 @@ impl PluginManager {
             }
         }
         remote_url
+    }
+
+    pub fn list(&self) -> String {
+        let mut return_string = String::new();
+
+        for plugin in &self.plugins {
+            return_string.push_str(plugin.0);
+            return_string.push_str("\n");
+        }
+
+        return_string
     }
 }
