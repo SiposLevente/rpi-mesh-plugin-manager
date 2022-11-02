@@ -1,5 +1,5 @@
 #!/bin/bash
-
+cd `dirname $0`
 if [[ `whoami` != "root" ]];then
     echo "Run this script with root privilages!"
     exit 1
